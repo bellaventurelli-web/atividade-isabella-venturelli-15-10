@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HortaSmart</title>
+<style>
+  body { font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; padding: 0 10px; }
+  h1 { text-align: center; }
+  h2 { font-size: 16px; }
+  section { border: 1px solid #ccc; padding: 10px; margin-bottom: 15px; }
+  input { padding: 5px; width: 60%; }
+  button { padding: 5px 10px; }
+  li { margin: 5px 0; }
+</style>
+</head>
+<body>
+
+<h1>HortaSmart</h1>
+
+<section>
+  <h2>Plantas</h2>
+  <input type="text" id="nomePlanta" placeholder="Nome da planta">
+  <button onclick="adicionarPlanta()">Adicionar</button>
+  <ul id="listaPlantas"></ul>
+</section>
+
+<section>
+  <h2>Sensores</h2>
+  <p>Umidade: <span id="umidade"></span>%
+    <button onclick="definirUmidade()">Definir 80%</button></p>
+  <p>Água: <span id="agua"></span>%
+    <button onclick="definirAgua()">Definir 50%</button></p>
+</section>
+
+<section>
+  <h2>Alertas</h2>
+  <input type="text" id="msgAlerta" placeholder="Mensagem do alerta">
+  <button onclick="adicionarAlerta()">Adicionar</button>
+  <ul id="listaAlertas"></ul>
+</section>
+
+<script>
+async function enviar(url, metodo, dados) {
+  await fetch(url, {
+    method: metodo,
+    headers: { "Content-Type": "application/json" },
+    body: dados ? JSON.stringify(dados) : undefined
+  });
+}
+
+async function mostrarPlantas() {
+  var resposta = await fetch("/plantas");
+  var plantas = await resposta.json();
+  var lista = document.getElementById("listaPlantas");
+  lista.innerHTML = "";
+  for (var i = 0; i < plantas.length; i++) {
+    var li = document.createElement("li");
+    li.textContent = plantas[i].id + " - " + plantas[i].nome;
+    lista.appendChild(li);
+  }
+}
+
+async function adicionarPlanta() {
+  var campo = document.getElementById("nomePlanta");
+  var nome = campo.value.trim();
+  if (nome == "") return;
+  await enviar("/plantas", "POST", { nome: nome });
+  campo.value = "";
+  mostrarPlantas();
+}
+
+async function mostrarSensor() {
+  var resposta = await fetch("/sensores");
+  var sensor = await resposta.json();
+  document.getElementById("umidade").textContent = sensor.umidade;
+  document.getElementById("agua").textContent = sensor.agua;
+}
+
+async function definirUmidade() {
+  await enviar("/sensores/umidade", "PUT", { valor: 80 });
+  mostrarSensor();
+}
+
+async function definirAgua() {
+  await enviar("/sensores/agua", "PUT", { valor: 50 });
+  mostrarSensor();
+}
+
+async function mostrarAlertas() {
+  var resposta = await fetch("/alertas");
+  var alertas = await resposta.json();
+  var lista = document.getElementById("listaAlertas");
+  lista.innerHTML = "";
+  for (var i = 0; i < alertas.length; i++) {
+    var li = document.createElement("li");
+    li.textContent = alertas[i].mensagem + " ";
+    var botao = document.createElement("button");
+    botao.textContent = "Remover";
+    botao.onclick = criarRemocao(alertas[i].id);
+    li.appendChild(botao);
+    lista.appendChild(li);
+  }
+}
+
+function criarRemocao(id) {
+  return async function () {
+    await enviar("/alertas/" + id, "DELETE");
+    mostrarAlertas();
+  };
+}
+
+async function adicionarAlerta() {
+  var campo = document.getElementById("msgAlerta");
+  var msg = campo.value.trim();
+  if (msg == "") return;
+  await enviar("/alertas", "POST", { mensagem: msg });
+  campo.value = "";
+  mostrarAlertas();
+}
+
+mostrarPlantas();
+mostrarSensor();
+mostrarAlertas();
+</script>
+
+</body>
+</html>
